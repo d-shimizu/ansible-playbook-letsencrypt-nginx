@@ -1,0 +1,89 @@
+---
+
+- name: Create Dir
+  file:
+    path: /etc/pki/{{ domain }}
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Create Server Secret Cert
+  openssl_privatekey:
+    path: /etc/pki/{{ domain }}/{{ domain }}.key
+    state: present
+
+- name: Let's Encrypt Account Key
+  openssl_privatekey:
+    path: /etc/pki/{{ domain }}/account.key
+    state: present
+
+#- name: Let's Encrypt Private Key
+  #openssl_privatekey:
+  #  path: /etc/ssl/{{ domain }}/{{ domain }}.key
+
+- name: Create Server Cert
+  command: openssl req -new -key {{ domain }}.key -out {{ domain }}.csr -subj "/C=JP/ST=Tokyo/L=Tokyo/O=zenwerk/CN="{{ domain }}
+  args:
+    chdir: /etc/pki/{{ domain }}
+    creates: /etc/pki/{{ domain }}/{{ domain }}.csr
+
+### Example with DNS challenge against production ACME server ###
+
+- name: Create a challenge for sample.com using a account key file.
+  letsencrypt:
+  #acme_certificate:
+    account_key_src: /etc/pki/{{ domain }}/account.key
+    account_email: root@example.jp
+    src: /etc/pki/{{ domain }}/{{ domain }}.csr
+    cert: /etc/pki/{{ domain }}/{{ domain }}.crt
+    challenge: dns-01
+    acme_directory: https://acme-v01.api.letsencrypt.org/directory
+    # Renew if the certificate is at least 30 days old
+    remaining_days: 60
+  register: letsencrypt_challenge
+
+# perform the necessary steps to fulfill the challenge
+# for example:
+#
+- route53:
+    state: present
+    zone: "{{ route53_zone }}"
+    record: "{{ letsencrypt_challenge.challenge_data[domain]['dns-01'].record }}"
+    type: TXT
+    ttl: 60
+    # Note: route53 requires TXT entries to be enclosed in quotes
+    value: "\"{{ letsencrypt_challenge.challenge_data[domain]['dns-01'].resource_value }}\""
+    aws_access_key: "{{aws_access_key}}"
+    aws_secret_key: "{{aws_secret_key}}"
+    wait: yes
+    wait_timeout: 300
+  when: letsencrypt_challenge is changed
+
+# Alternative way:
+#
+# - route53:
+#     zone: sample.com
+#     record: "{{ item.key }}"
+#     type: TXT
+#     ttl: 60
+#     # Note: item.value is a list of TXT entries, and route53
+#     # requires every entry to be enclosed in quotes
+#     value: "{{ item.value | map('regex_replace', '^(.*)$', ''\1'' ) | list }}"
+#     with_dict: sample_com_challenge.challenge_data_dns
+#     when: sample_com_challenge is changed
+
+- name: Let the challenge be validated and retrieve the cert and intermediate certificate
+  letsencrypt:
+  #acme_certificate:
+    account_key_src: /etc/pki/{{ domain }}/account.key
+    account_email: root@example.jp
+    src: /etc/pki/{{ domain }}/{{ domain }}.csr
+    cert: /etc/pki/{{ domain }}/{{ domain }}.crt
+    fullchain: /etc/pki/{{ domain }}/{{ domain }}-fullchain.crt
+    chain: /etc/pki/{{ domain }}/{{ domain }}-intermediate.crt
+    challenge: dns-01
+    acme_directory: https://acme-v01.api.letsencrypt.org/directory
+    remaining_days: 60
+    data: "{{ letsencrypt_challenge }}"
+

@@ -1,0 +1,4 @@
+---
+
+- include_tasks: roles/letsencrypt/tasks/install_letsencrypt.yml
+- include_tasks: roles/letsencrypt/tasks/configure_letsencrypt.yml

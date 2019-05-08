@@ -1,0 +1,4 @@
+- name: install pyopenssl
+  yum:
+    name: python27-pyOpenSSL
+    state: latest

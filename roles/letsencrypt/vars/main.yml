@@ -1,0 +1,6 @@
+---
+
+letsencrypt_intermidiate_ca: https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem.txt
+aws_access_key: ********************
+aws_secret_key: ****************************************
+

@@ -1,0 +1,9 @@
+- hosts: amazonlinux
+  become: yes
+  #become_user: root
+  #gather_facts: no
+  roles:
+    - { role: letsencrypt, tags: letsencrypt }
+  vars_files:
+    - ./roles/letsencrypt/vars/main.yml
+    - ./group_vars/{{ environments }}.yml

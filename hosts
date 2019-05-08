@@ -1,0 +1,5 @@
+[amazonlinux]
+***.***.***.***
+
+[all:vars]
+environments=dev01
